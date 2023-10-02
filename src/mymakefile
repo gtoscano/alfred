@@ -1,0 +1,64 @@
+CXX	=	g++
+CXXFLAGS	=	-g -std=c++2a -pipe -Wall  
+LINK	=	g++
+LFLAGS	=	
+LIBS = `PKG_CONFIG_PATH=/usr/local/lib/pkgconfig: pkg-config loki-cpp --libs fmt` -laws-c-sdkutils -lcrossguid -luuid -lfmt -laws-cpp-sdk-s3 -laws-cpp-sdk-core -lredis++ -lhiredis -lparquet -larrow -DBOOST_LOG_DYN_LINK -lboost_thread -lboost_log -lboost_log_setup -lpthread -lSimpleAmqpClient 
+
+
+
+SRC_DIR   =	.
+
+INCPATH =       
+TAR     =       tar cvf
+GZIP    =       gzip -9f
+
+####### Files
+
+SRC_H =		alfredbuttler.h \
+		misc.hpp
+
+SRC_SRC =	alfredbuttler-28.cpp \
+		misc2.cpp
+		
+SRC_OBJ =	alfredbuttler-28.o \
+		misc2.o 
+
+
+TARGET = alfredbuttler-28
+
+
+####### Implicit rules
+
+.SUFFIXES: .cpp
+
+.cpp.o:
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o $@ $< $(LIBS)
+
+####### Build rules
+
+
+.PHONY: dist clean realclean targets
+
+all: $(TARGET)
+
+$(TARGET): $(SRC_OBJ)
+	$(LINK) $(CXXFLAGS) -o $@ $(SRC_OBJ) $(LIBS) $(INCPATH)
+	@echo "Compiled "$@" successfully!"
+
+
+dist:
+	$(TAR)  alfredbuttler.tar $(SRC_SRC) $(SRC_H) $(TARGET_SRC) Makefile 
+	$(GZIP) alfredbuttler.tar
+
+clean:
+	-rm -f $(SRC_OBJ) $(TARGET) alfredbuttler.tar.gz
+	-rm -f *~ core
+
+realclean:
+	-rm -f $(SRC_OBJ) $(TARGET) alfredbuttler.tar.gz
+	-rm -f *~ core
+	-rm -f *.dat
+
+targets: $(TARGET) $(SRC) 
+
+
