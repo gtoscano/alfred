@@ -99,9 +99,9 @@ find_package(aws-cpp-sdk-s3 CONFIG REQUIRED)
 find_package(Protobuf MODULE REQUIRED)
 
 
-file(GLOB_RECURSE SRC_FILES src/*.cpp ../misc/src/misc2.cpp)
+file(GLOB_RECURSE SRC_FILES src/*.cpp /home/gtoscano/django/api4opt4/optimization/misc/src/misc2.cpp)
 add_executable(alfred ${SRC_FILES})
-target_include_directories(alfred PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/../misc/include)
+target_include_directories(alfred PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include /home/gtoscano/django/api4opt4/optimization/misc/include)
 target_link_libraries(alfred PUBLIC Boost::log Boost::log_setup hiredis redis++ fmt arrow_shared parquet_shared crossguid aws-cpp-sdk-core aws-cpp-sdk-s3 SimpleAmqpClient Threads::Threads PkgConfig::LOKI-CPP PkgConfig::LIBCURL)
 #PkgConfig::PROTOBUF PkgConfig::SNAPPY)
 
