@@ -25,7 +25,7 @@ find_package(PkgConfig)
 
 # Check libraries of loki: pkg-config --libs loki-cpp
 # Result: -L/usr/local/lib -lpthread -lprotobuf -lsnappy -lfmt -lcurl -lloki-cpp
-pkg_check_modules(LOKI-CPP REQUIRED IMPORTED_TARGET loki-cpp)
+#pkg_check_modules(LOKI-CPP REQUIRED IMPORTED_TARGET loki-cpp)
 pkg_check_modules(PROTOBUF REQUIRED IMPORTED_TARGET protobuf)
 pkg_check_modules(SNAPPY REQUIRED IMPORTED_TARGET snappy)
 pkg_check_modules(CURLPP REQUIRED IMPORTED_TARGET curlpp)
@@ -81,7 +81,8 @@ pkg_check_modules(LIBCURL REQUIRED IMPORTED_TARGET libcurl)
 #
 #FetchContent_MakeAvailable(fmt hiredis redis++ SimpleAmqpClient curlpp)
 
-set(Parquet_DIR /usr/lib/x86_64-linux-gnu/cmake/arrow)
+#set(Parquet_DIR /usr/lib/x86_64-linux-gnu/cmake/arrow)
+find_package(Parquet REQUIRED)
 
 # -lpthread
 find_package(Threads REQUIRED)
@@ -89,9 +90,7 @@ find_package(Threads REQUIRED)
 find_package(Arrow CONFIG REQUIRED)
 # -lparquet
 find_package(Parquet CONFIG REQUIRED)
-# lcrossguid -luuid
 # sudo apt-get install uuid-dev
-find_package(crossguid CONFIG REQUIRED)
 # -laws-cpp-sdk-core
 find_package(aws-cpp-sdk-core CONFIG REQUIRED)
 # -laws-cpp-sdk-s3
@@ -102,7 +101,7 @@ find_package(Protobuf MODULE REQUIRED)
 file(GLOB_RECURSE SRC_FILES src/*.cpp /home/gtoscano/django/api4opt4/optimization/misc/src/misc2.cpp)
 add_executable(alfred ${SRC_FILES})
 target_include_directories(alfred PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include /home/gtoscano/django/api4opt4/optimization/misc/include)
-target_link_libraries(alfred PUBLIC Boost::log Boost::log_setup hiredis redis++ fmt arrow_shared parquet_shared crossguid aws-cpp-sdk-core aws-cpp-sdk-s3 SimpleAmqpClient Threads::Threads PkgConfig::LOKI-CPP PkgConfig::LIBCURL)
+target_link_libraries(alfred PUBLIC Boost::log Boost::log_setup hiredis redis++ fmt arrow_shared parquet aws-cpp-sdk-core aws-cpp-sdk-s3 SimpleAmqpClient Threads::Threads PkgConfig::LIBCURL)
 #PkgConfig::PROTOBUF PkgConfig::SNAPPY)
 
 install(TARGETS alfred RUNTIME DESTINATION /usr/local/bin)

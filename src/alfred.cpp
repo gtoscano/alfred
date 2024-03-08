@@ -1,6 +1,6 @@
-// g++ alfredbuttler.cpp misc2.cpp -lcrossguid -luuid -lfmt -laws-cpp-sdk-s3 -laws-cpp-sdk-core -lredis++ -lhiredis -lparquet -larrow -DBOOST_LOG_DYN_LINK -lboost_thread -lboost_log -lboost_log_setup -lpthread -lSimpleAmqpClient -lloki-cpp -std=c++2a
+// g++ alfredbuttler.cpp misc2.cpp -luuid -lfmt -laws-cpp-sdk-s3 -laws-cpp-sdk-core -lredis++ -lhiredis -lparquet -larrow -DBOOST_LOG_DYN_LINK -lboost_thread -lboost_log -lboost_log_setup -lpthread -lSimpleAmqpClient -lloki-cpp -std=c++2a
 // libs = `pkg_config_path=/usr/local/lib/pkgconfig: pkg-config --libs const short = require('short-uuid');uuid
-// crossguid fmt`
+// fmt`
 // There was an error, that I solved. I showed they way how I showed below
 //https://github.com/aws/aws-sdk-cpp/issues/1920
 //for the class I need to try:https://github.com/Paradigm4/bridge/blob/a02dbc7a44ced464f1c3cf6695e7cb44d7ded2ca/src/S3Driver.cpp#L432 
@@ -36,7 +36,6 @@
 #include <aws/core/utils/logging/LogLevel.h>
 
 #include <fmt/core.h>
-#include <crossguid/guid.hpp>
 #include <nlohmann/json.hpp>
 #include <sw/redis++/redis++.h>
 
@@ -64,7 +63,8 @@
 #include <parquet/exception.h>
 
 
-#include "misc.hpp"
+
+//#include "misc.hpp"
 
 long my_time = 0;
 using json = nlohmann::json;
@@ -73,15 +73,23 @@ using json = nlohmann::json;
 using namespace loki;
  */
 //"tcp://127.0.0.1:6379/1"
-std::string REDIS_HOST = getEnvVar("REDIS_HOST");
-std::string REDIS_PORT = getEnvVar("REDIS_PORT");
-std::string REDIS_DB_OPT = getEnvVar("REDIS_DB_OPT");
+//
+//
+std::string get_env_var(std::string const &key, std::string const &default_value="") {
+        const char *val = std::getenv(key.c_str());
+        return val == nullptr ? std::string(default_value) : std::string(val);
+}
+
+
+std::string REDIS_HOST = get_env_var("REDIS_HOST");
+std::string REDIS_PORT = get_env_var("REDIS_PORT");
+std::string REDIS_DB_OPT = get_env_var("REDIS_DB_OPT");
 std::string REDIS_URL = fmt::format("tcp://{}:{}/{}", REDIS_HOST, REDIS_PORT, REDIS_DB_OPT);
 //"192.168.1.31:3100"
 
 /* gtp: loki
-std::string LOKI_HOST = getEnvVar("LOKI_HOST");
-std::string LOKI_PORT = getEnvVar("LOKI_PORT");
+std::string LOKI_HOST = get_env_var("LOKI_HOST");
+std::string LOKI_PORT = get_env_var("LOKI_PORT");
 std::string LOKI_URL = fmt::format("{}:{}",LOKI_HOST, LOKI_PORT);
  */
 
@@ -89,13 +97,13 @@ auto redis = sw::redis::Redis(REDIS_URL);
 
 constexpr auto EXCHANGE_NAME = "opt4cast_exchange";
 
-std::string AMQP_HOST = getEnvVar("AMQP_HOST");
-std::string AMQP_USERNAME = getEnvVar("AMQP_USERNAME");
-std::string AMQP_PASSWORD = getEnvVar("AMQP_PASSWORD");
-std::string AMQP_PORT = getEnvVar("AMQP_PORT");
-const std::string OPT4CAST_WAIT_MILLISECS_IN_CAST = getEnvVar("OPT4CAST_WAIT_MILLISECS_IN_CAST");
+std::string AMQP_HOST = get_env_var("AMQP_HOST");
+std::string AMQP_USERNAME = get_env_var("AMQP_USERNAME");
+std::string AMQP_PASSWORD = get_env_var("AMQP_PASSWORD");
+std::string AMQP_PORT = get_env_var("AMQP_PORT");
+const std::string OPT4CAST_WAIT_MILLISECS_IN_CAST = get_env_var("OPT4CAST_WAIT_MILLISECS_IN_CAST");
 
-std::string msu_cbpo_path = getEnvVar("MSU_CBPO_PATH", "/opt/opt4cast");
+std::string msu_cbpo_path = get_env_var("MSU_CBPO_PATH", "/opt/opt4cast");
 
 // Create a registry
 //.Remote("127.0.0.1:3000")
@@ -561,7 +569,7 @@ std::tuple<json, json, json> create_jsons(std::string scenario_id, std::string e
 
     std::vector<int> geography_id_list;
     int geography_tmp;
-    fmt::print("geography_nids: %d\n", geography_nids);
+    fmt::print("geography_nids: {}\n", geography_nids);
     for (int i(0); i < geography_nids; ++i) {
         fmt::print("{}\n", emo_data_list[13 + i]);
         
@@ -645,9 +653,12 @@ bool send_json_streams(std::string scenario_id,
     }
     //scenarios:
     std::string scenario_path = fmt::format("data/scenarios/metadata/scenario/scenarioid={}/scenario.json", scenario_id);
+    fmt::print("scenario_path: {}\n", scenario_path);
     std::string scenario_geography_path = fmt::format("data/scenarios/metadata/scenariogeography/scenarioid={}/scenariogeography.json", scenario_id);
+    fmt::print("scenario_geography_path: {}\n", scenario_geography_path);
     //bmps
     std::string impbmpsubmittedland_path = fmt::format("data/scenarios/metadata/impbmpsubmittedland/scenarioid={}/impbmpsubmittedland.parquet", scenario_id);
+    fmt::print("impbmpsubmittedland_path: {}\n", impbmpsubmittedland_path);
     std::string impbmpsubmittedanimal_path = fmt::format("data/scenarios/metadata/impbmpsubmittedanimal/scenarioid={}/impbmpsubmittedanimal.parquet", scenario_id);
     std::string impbmpsubmittedmanuretransport_path = fmt::format("data/scenarios/metadata/impbmpsubmittedmanuretransport/scenarioid={}/impbmpsubmittedmanuretransport.parquet", scenario_id);
     //output
@@ -655,6 +666,7 @@ bool send_json_streams(std::string scenario_id,
     //thrigger
 
     std::string core_path = fmt::format("lambdarequests/optimize/optimizeSce_{}.json", exec_uuid);
+    fmt::print("core_path: {}\n", core_path);
 
     try {
         if (awss3::put_object_buffer("cast-optimization-dev", scenario_path, scenario.dump()) == false)
@@ -741,6 +753,7 @@ bool send_files(std::string scenario_id, std::string emo_uuid, std::string exec_
     if (std::filesystem::exists(land_filename) &&
         awss3::put_object("cast-optimization-dev", land_path, land_filename)) {
         file_sent = true;
+        fmt::print("land file sent: scenario_id: {}, exec_id: {}\n", scenario_id, exec_uuid);
     }
 
     if (std::filesystem::exists(animal_filename) &&
@@ -1045,7 +1058,7 @@ void retrieve_exec() {
             std::string exec_str = *redis.hget("exec_to_retrieve", to_retrieve_list[0]);
             std::vector<std::string> tmp_list;
             split_str(exec_str, '_', tmp_list);
-            fmt::format("Retrieving: {}, {}\n", to_retrieve_list[0], tmp_list[1]); 
+            fmt::print("Retrieving: {}, {}\n", to_retrieve_list[0], tmp_list[1]); 
         }
     }
 
@@ -1164,7 +1177,7 @@ bool emo_to_initialize(std::string emo_uuid) {
         //redis.rpush("added_to_retrieving_queue", fmt::format("{}", get_time()));
         cinfo =  fmt::format("[Retrieving QUEUE] EMOO_UUID: {} Scenario ID: {}", emo_uuid, scenario_id);
         if (redis.hdel("emo_to_initialize", emo_uuid)) {
-            std::clog << "Delete it\n";
+
             cinfo =  fmt::format("[EMO Initialized and removed from queue] EMOO_UUID: {} Scenario ID: {}", emo_uuid, scenario_id);
         } else {
             auto cerror =  fmt::format("[[DELETE EMO FROM INITALIZED FAILED] EMOO_UUID: {} Scenario ID: {}", emo_uuid, scenario_id);
@@ -1411,7 +1424,7 @@ solution_to_execute(message);
 int main(int argc, char const *argv[]) {
     my_time = get_time();
     std::string env_var = "MSU_CBPO_PATH";
-    msu_cbpo_path = getEnvVar(env_var);
+    msu_cbpo_path = get_env_var(env_var);
     std::cout << "msu_cbpo_path" << msu_cbpo_path << std::endl;
 
     std::string options[] = {"send", "retrieve", "log", "initialize_and_retrieve_data"};
