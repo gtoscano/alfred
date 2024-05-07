@@ -66,7 +66,7 @@
 
 //#include "misc.hpp"
 
-long my_time = 0;
+unsigned long long my_time = 0;
 using json = nlohmann::json;
 
 /* gtp: loki
@@ -128,14 +128,14 @@ auto registry = Builder<AgentJson>{}
 
 auto &logger = registry.Add({{"job", "opt4cast"}});
  */ //gtp: end loki
-long get_time() {
+unsigned long long get_time() {
     namespace sc = std::chrono;
     auto time = sc::system_clock::now();
 
     auto since_epoch = time.time_since_epoch();
     auto millis = sc::duration_cast<sc::milliseconds>(since_epoch);
 
-    long now = millis.count(); // just like java (new Date()).getTime();
+    unsigned long long now = millis.count(); // just like java (new Date()).getTime();
     return now;
 }
 
@@ -246,7 +246,7 @@ namespace awss3 {
             ret = true;
         } else {
 
-            int my_new_time = (get_time() - my_time) / 1000;
+            unsigned long long my_new_time = (get_time() - my_time) / 1000;
             std::string cerror = fmt::format("[S3] [PUT_OBJECT] {} {} {} {} {}", outcome.GetError().GetMessage(), my_new_time, bucket_name, object_name, local_object_name);
             /* gtp: loki
             logger.Infof(fmt::format("{} {}", cout_time(), clog));
@@ -715,7 +715,8 @@ bool send_message(std::string routing_name, std::string msg) {
     opts.auth = AmqpClient::Channel::OpenOpts::BasicAuth(AMQP_USERNAME, AMQP_PASSWORD);
     try {
         auto channel = AmqpClient::Channel::Open(opts);
-        channel->DeclareExchange(EXCHANGE_NAME, AmqpClient::Channel::EXCHANGE_TYPE_DIRECT, false, true, true);
+        channel->DeclareExchange(EXCHANGE_NAME, AmqpClient::Channel::EXCHANGE_TYPE_DIRECT, false, true, false);
+        // Enable publisher confirmations for the channel.
         auto message = AmqpClient::BasicMessage::Create(msg);
         channel->BasicPublish(EXCHANGE_NAME, routing_name, message, false, false);
         return_val = true;
@@ -1042,8 +1043,9 @@ void retrieve_exec() {
 
     std::vector<std::string> to_retrieve_list;
     redis.lrange("retrieving_queue", 0, -1, std::back_inserter(to_retrieve_list));
-    //if(to_retrieve_list.size )
-    redis.del({"retrieving_queue"});
+    int n_to_retrieve = to_retrieve_list.size();
+    redis.ltrim("retrieving_queue", n_to_retrieve, -1);
+    //redis.del({"retrieving_queue"});
 
 
     //std::vector<std::string> added_to_retrieving_queue;
@@ -1051,10 +1053,9 @@ void retrieve_exec() {
     //redis.del({"added_to_retrieving_queue"});
 
 
-    int n_to_retrieve = to_retrieve_list.size();
     if (n_to_retrieve > 0) {
         std::cout << "Retrieving: " << n_to_retrieve << std::endl;
-        if (n_to_retrieve ==1) {
+        if (n_to_retrieve == 1) {
             std::string exec_str = *redis.hget("exec_to_retrieve", to_retrieve_list[0]);
             std::vector<std::string> tmp_list;
             split_str(exec_str, '_', tmp_list);
@@ -1062,28 +1063,18 @@ void retrieve_exec() {
         }
     }
 
-    for (int i(0); i < n_to_retrieve; i++) {
-        std::string exec_uuid = to_retrieve_list[i];
+    for (int index(0); index < n_to_retrieve; index++) {
+        std::string exec_uuid = to_retrieve_list[index];
         if (redis.hexists("started_time", exec_uuid) == false) {
             redis.hset("started_time", exec_uuid, fmt::format("{}", get_time()));
         }
         long added_time_l = 0;
-        /*
-        try {
-            auto added_time = added_to_retrieving_queue[i];
-            added_time_l = std::stol(added_time);
-        }
-        catch (const std::exception &error) {
-            auto clog = fmt::format("error: {}\n", error.what());
-        }
-        */
-
         std::string exec_str = *redis.hget("exec_to_retrieve", exec_uuid);
-        std::vector<std::string> to_retrieve_list;
-        split_str(exec_str, '_', to_retrieve_list);
+        std::vector<std::string> tmp_list;
+        split_str(exec_str, '_', tmp_list);
 
-        std::string emo_uuid = to_retrieve_list[0];
-        std::string scenario_id = to_retrieve_list[1];
+        std::string emo_uuid = tmp_list[0];
+        std::string scenario_id = tmp_list[1];
 
         bool flag = false;
 
@@ -1092,51 +1083,47 @@ void retrieve_exec() {
                 auto cinfo = fmt::format("[Retrieved] EMO_UUID={}  EXEC_UUID={} Scenario ID={}", emo_uuid, exec_uuid, scenario_id);
 
                 send_message(emo_uuid, exec_uuid);
+                fmt::print("Retrieved: {}, {}\n", exec_uuid, scenario_id);
                 redis.rpush("scenario_ids", scenario_id);
                 redis.hdel("exec_to_retrieve", exec_uuid);
                 redis.hdel("started_time", exec_uuid);
-                flag = true;
+                continue;
             }
         }
 
-        if (flag == false) {
-            long now_millisec = get_time();
+        unsigned long long now_millisec = get_time();
+        unsigned long long started_time = std::stol(*redis.hget("started_time", exec_uuid));
+        unsigned long long waiting_time = 100000;
+        try {
+            waiting_time = std::stol(OPT4CAST_WAIT_MILLISECS_IN_CAST);
+        }
+        catch (const std::exception &error) {
+            std::cout << "Error on retrieve_exec\n" << error.what() << "\n";
+            auto cerror =  fmt::format("When trying using stoi for (OPT4CAST_WAIT_MILLISECS_IN_CAST): {} ", error.what());
+        }
+        std::string core_path = fmt::format("lambdarequests/optimize/optimizeSce_{}.json", exec_uuid);
 
-            auto started_time = std::stol(*redis.hget("started_time", exec_uuid));
-            int waiting_time = 100000;
-            try {
-                waiting_time = std::stoi(OPT4CAST_WAIT_MILLISECS_IN_CAST);
-            }
-            catch (const std::exception &error) {
-                std::cout << "Error on retrieve_exec\n" << error.what() << "\n";
-                auto cerror =  fmt::format("When trying using stoi for (OPT4CAST_WAIT_MILLISECS_IN_CAST): {} ", error.what());
-            }
-            std::string core_path = fmt::format("lambdarequests/optimize/optimizeSce_{}.json", exec_uuid);
-            bool is_core_path_deleted = false;
-            if (awss3::is_object("cast-optimization-dev", core_path) == false) {
-                is_core_path_deleted = true;
-            }
+        if (awss3::is_object("cast-optimization-dev", core_path) == false || 
+                now_millisec - started_time > waiting_time) 
+        {
+            double fake_load = 9999999999999.99; //DBL_MAX; would it work?
+            std::cout << fmt::format("{} - {} = {}: Waiting time: {}\n", now_millisec, started_time, now_millisec - started_time, waiting_time);
 
-            if (is_core_path_deleted || now_millisec - started_time > waiting_time) {
-                double fake_load = 9999999999999.99; //DBL_MAX; would it work?
-                std::cout << fmt::format("{} - {} = {}: Waiting time: {}\n", now_millisec, started_time, now_millisec - started_time, waiting_time);
-
-                redis.hset("executed_results", exec_uuid, fmt::format("{:.2f}_{:.2f}_{:.2f}", fake_load, fake_load, fake_load));
-                send_message(emo_uuid, exec_uuid);
-                //redis.rpush("executed_scenario_list", exec_uuid);//, fmt::format("{}_{}", emo_uuid, scenario_id));
-                redis.rpush("scenario_ids", scenario_id);
-                redis.hdel("exec_to_retrieve", exec_uuid);
-                redis.hdel("started_time", exec_uuid);
-                /*
-                std::cout << fmt::format("{} - {} = {}\n", now_millisec, added_time_l, now_millisec - added_time_l);
-                redis.rpush("retrieving_enqueue_failed", exec_uuid);
-                std::cout << "retrieving enqueue failed" << exec_uuid << std::endl;
-                auto cerror = fmt::format("The solution took more time than the assigned");
-                */
-            } else {
-                redis.rpush("retrieving_queue", exec_uuid);
-                //redis.rpush("added_to_retrieving_queue", fmt::format("{}", added_time_l));
-            }
+            redis.hset("executed_results", exec_uuid, fmt::format("{:.2f}_{:.2f}_{:.2f}", fake_load, fake_load, fake_load));
+            send_message(emo_uuid, exec_uuid);
+            //redis.rpush("executed_scenario_list", exec_uuid);//, fmt::format("{}_{}", emo_uuid, scenario_id));
+            redis.rpush("scenario_ids", scenario_id);
+            redis.hdel("exec_to_retrieve", exec_uuid);
+            redis.hdel("started_time", exec_uuid);
+            /*
+            std::cout << fmt::format("{} - {} = {}\n", now_millisec, added_time_l, now_millisec - added_time_l);
+            redis.rpush("retrieving_enqueue_failed", exec_uuid);
+            std::cout << "retrieving enqueue failed" << exec_uuid << std::endl;
+            auto cerror = fmt::format("The solution took more time than the assigned");
+            */
+        } else {
+            redis.rpush("retrieving_queue", exec_uuid);
+            //redis.rpush("added_to_retrieving_queue", fmt::format("{}", added_time_l));
         }
     }
 
@@ -1192,8 +1179,6 @@ bool emo_to_initialize(std::string emo_uuid) {
 }
 
 bool solution_to_execute(std::string exec_uuid) {
-    //if(to_retrieve_list.size )
-    //redis.del({"retrieving_queue"});
     std::string exec_str = *redis.hget("solution_to_execute_dict", exec_uuid);
     if (exec_str.size() <= 0) {
         std::cout << "hay pedo\n";
@@ -1220,7 +1205,6 @@ bool solution_to_execute(std::string exec_uuid) {
             auto cinfo =  fmt::format("[Executing] EXEC_UUID: {} EMOO_UUID: {} Scenario ID: {} ", exec_uuid, emo_uuid, scenario_id);
             redis.hset("exec_to_retrieve", exec_uuid, fmt::format("{}_{}", emo_uuid, scenario_id));
             redis.rpush("retrieving_queue", exec_uuid);
-            //redis.rpush("added_to_retrieving_queue", fmt::format("{}", get_time()));
             redis.hset("started_time", exec_uuid, fmt::format("{}", get_time()));
             cinfo =  fmt::format("[Retrieving QUEUE] EXEC_UUID: {} EMOO_UUID: {} Scenario ID: {}", exec_uuid, emo_uuid, scenario_id);
             //start_time[emo_uuid] = datetime.datetime.now()
@@ -1291,9 +1275,14 @@ void send() {
     //try {
         auto channel = AmqpClient::Channel::Open(opts);
 
-        channel->DeclareExchange(EXCHANGE_NAME, AmqpClient::Channel::EXCHANGE_TYPE_DIRECT, false, true, true);
+        auto passive = false; //meaning you want the server to create the exchange if it does not already exist.
+        auto durable = true; //meaning the exchange will survive a broker restart
+        auto auto_delete = false; //meaning the queue will not be deleted once the channel is closed
+        channel->DeclareExchange(EXCHANGE_NAME, AmqpClient::Channel::EXCHANGE_TYPE_DIRECT, passive, durable, auto_delete);
 
-        auto queue_name = channel->DeclareQueue("", false, true, true, true);
+        auto generate_queue_name ="";
+        auto exclusive = false; //meaning the queue can be accessed in other channels
+        auto queue_name = channel->DeclareQueue(generate_queue_name, passive, durable, exclusive, auto_delete);
 
 
         //std::clog << "Queue with name '" << queue_name << "' has been declared.\n";
@@ -1320,15 +1309,18 @@ void send() {
      */
         std::cout << " [*] Waiting for executions. To exit press CTRL+C\n";
 
-        auto consumer_tag = channel->BasicConsume(queue_name, "", true, true, true, 10);
+        auto no_local = false; 
+        auto no_ack = true; //meaning the server will NOT expect an acknowledgement of messages delivered to the consumer
+        auto message_prefetch_count = 1;
+        auto consumer_tag = channel->BasicConsume(queue_name, generate_queue_name, no_local, no_ack, exclusive, message_prefetch_count);
 
         //std::clog
 
         cinfo =  fmt::format("Consumer tag: {}\n", consumer_tag);
         while (true) {
-            auto envelop = channel->BasicConsumeMessage(consumer_tag);
-            auto message_payload = envelop->Message()->Body();
-            auto routing_key = envelop->RoutingKey();
+            auto envelope = channel->BasicConsumeMessage(consumer_tag);
+            auto message_payload = envelope->Message()->Body();
+            auto routing_key = envelope->RoutingKey();
 
             if (routing_key == std::string("opt4cast_initialization")) {
                 auto cinfo =  fmt::format("Initializing scenario: {}", message_payload);
