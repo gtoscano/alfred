@@ -60,7 +60,8 @@ Contributions to Alfred are welcome! Please fork the repository and submit pull 
 
 ## License
 
-Specify your licensing information here.
+Alfred is licensed under the [MIT License](LICENSE). See the LICENSE file for more details.
+
 
 ## Support
 
