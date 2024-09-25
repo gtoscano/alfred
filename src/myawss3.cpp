@@ -233,8 +233,8 @@ namespace awss3 {
                 break;
             } else {
                 --ntries;
-                std::this_thread::sleep_for(std::chrono::seconds(seconds));
-                //std::this_thread::sleep_until(std::chrono::system_clock::now() + std::chrono::seconds(wait_nsecs));
+                //std::this_thread::sleep_for(std::chrono::seconds(wait_nsecs));
+                std::this_thread::sleep_until(std::chrono::system_clock::now() + std::chrono::seconds(wait_nsecs));
             }
         }
         if (ans == false) {
