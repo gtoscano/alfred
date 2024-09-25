@@ -3,9 +3,9 @@
 #include <vector>
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
+#include <filesystem>
 #include <sw/redis++/redis++.h>
 #include <SimpleAmqpClient/SimpleAmqpClient.h>
-
 #include <parquet/arrow/reader.h>
 #include <parquet/arrow/writer.h>
 #include <parquet/exception.h>
