@@ -11,6 +11,8 @@
 #include <aws/s3/model/ListObjectsRequest.h>
 #include <aws/s3/model/PutObjectRequest.h>
 #include <aws/core/utils/logging/LogLevel.h>
+#include <thread>
+#include <chrono>
 
 #include "utils.h"
 #include "myawss3.h"
@@ -210,8 +212,9 @@ namespace awss3 {
                     break;
     
                 int seconds = 1;
-                sleep(seconds);
+                //sleep(seconds);
                 //std::this_thread::sleep_until(std::chrono::system_clock::now() + std::chrono::seconds(seconds));
+                std::this_thread::sleep_for(std::chrono::seconds(seconds));
                 counter++;
             } else {
                 ret = true;
@@ -230,7 +233,8 @@ namespace awss3 {
                 break;
             } else {
                 --ntries;
-                std::this_thread::sleep_until(std::chrono::system_clock::now() + std::chrono::seconds(wait_nsecs));
+                std::this_thread::sleep_for(std::chrono::seconds(seconds));
+                //std::this_thread::sleep_until(std::chrono::system_clock::now() + std::chrono::seconds(wait_nsecs));
             }
         }
         if (ans == false) {
